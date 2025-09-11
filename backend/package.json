@@ -1,0 +1,154 @@
+{
+  "name": "ai-life-coach-backend",
+  "version": "1.0.0",
+  "description": "AI-powered life coach backend with goal tracking and context-aware coaching",
+  "main": "server.js",
+  "keywords": [
+    "ai",
+    "life-coach",
+    "goal-tracking",
+    "chatbot",
+    "openai",
+    "mongodb",
+    "vector-search"
+  ],
+  "author": "Your Name <your.email@example.com>",
+  "license": "MIT",
+  "engines": {
+    "node": ">=18.0.0",
+    "npm": ">=8.0.0"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "dev:debug": "DEBUG=lifecoach:* nodemon server.js",
+    "test": "jest --verbose",
+    "test:watch": "jest --watch",
+    "test:coverage": "jest --coverage",
+    "lint": "eslint .",
+    "lint:fix": "eslint . --fix",
+    "format": "prettier --write .",
+    "seed": "node scripts/seed.js",
+    "migrate": "node scripts/migrate.js",
+    "build": "npm run lint && npm test",
+    "docker:build": "docker build -t lifecoach .",
+    "docker:run": "docker-compose up -d",
+    "docker:stop": "docker-compose down",
+    "docker:logs": "docker-compose logs -f",
+    "deploy": "bash deploy.sh",
+    "deploy:staging": "NODE_ENV=staging bash deploy.sh",
+    "deploy:production": "NODE_ENV=production bash deploy.sh"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "mongoose": "^7.5.0",
+    "bcryptjs": "^2.4.3",
+    "jsonwebtoken": "^9.0.2",
+    "cors": "^2.8.5",
+    "helmet": "^7.0.0",
+    "express-rate-limit": "^6.10.0",
+    "express-validator": "^7.0.1",
+    "dotenv": "^16.3.1",
+    "winston": "^3.10.0",
+    "winston-daily-rotate-file": "^4.7.1",
+    "compression": "^1.7.4",
+    "multer": "^1.4.5-lts.1",
+    "sharp": "^0.32.5",
+    "openai": "^4.11.0",
+    "@huggingface/inference": "^2.6.0",
+    "@pinecone-database/pinecone": "^1.1.0",
+    "faiss-node": "^0.5.1",
+    "redis": "^4.6.7",
+    "ioredis": "^5.3.2",
+    "node-cron": "^3.0.2",
+    "nodemailer": "^6.9.4",
+    "socket.io": "^4.7.2",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.0",
+    "@sentry/node": "^7.69.0",
+    "express-slow-down": "^1.6.0",
+    "express-mongo-sanitize": "^2.2.0",
+    "xss": "^1.0.14",
+    "hpp": "^0.2.3"
+  },
+  "devDependencies": {
+    "nodemon": "^3.0.1",
+    "jest": "^29.6.2",
+    "supertest": "^6.3.3",
+    "mongodb-memory-server": "^8.15.1",
+    "eslint": "^8.48.0",
+    "eslint-config-airbnb-base": "^15.0.0",
+    "eslint-plugin-import": "^2.28.1",
+    "prettier": "^3.0.3",
+    "husky": "^8.0.3",
+    "lint-staged": "^14.0.1",
+    "@types/jest": "^29.5.5",
+    "cross-env": "^7.0.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "setupFilesAfterEnv": ["<rootDir>/tests/setup.js"],
+    "testMatch": ["<rootDir>/tests/**/*.test.js"],
+    "collectCoverageFrom": [
+      "**/*.js",
+      "!**/node_modules/**",
+      "!**/tests/**",
+      "!**/coverage/**",
+      "!server.js"
+    ],
+    "coverageThreshold": {
+      "global": {
+        "branches": 70,
+        "functions": 70,
+        "lines": 70,
+        "statements": 70
+      }
+    }
+  },
+  "eslintConfig": {
+    "extends": ["airbnb-base"],
+    "env": {
+      "node": true,
+      "jest": true
+    },
+    "rules": {
+      "no-console": "warn",
+      "consistent-return": "off",
+      "func-names": "off",
+      "object-shorthand": "off",
+      "no-process-exit": "off",
+      "no-param-reassign": "off",
+      "no-return-await": "off",
+      "no-underscore-dangle": "off",
+      "class-methods-use-this": "off"
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 80,
+    "tabWidth": 2
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged",
+      "pre-push": "npm test"
+    }
+  },
+  "lint-staged": {
+    "*.js": [
+      "eslint --fix",
+      "prettier --write",
+      "git add"
+    ]
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/yourusername/ai-life-coach.git"
+  },
+  "bugs": {
+    "url": "https://github.com/yourusername/ai-life-coach/issues"
+  },
+  "homepage": "https://github.com/yourusername/ai-life-coach#readme"
+}
