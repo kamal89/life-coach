@@ -1,9 +1,9 @@
 // routes/auth.js - Authentication routes
-const express = require('express');
-const router = express.Router();
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
+import { Router } from 'express';
+const router = Router();
+import Bcryptjs from 'bcryptjs';
+import Jsonwebtoken from 'jsonwebtoken';
+import User from '../../models/User.js';
 
 // POST /api/auth/register
 router.post('/register', async (req, res) => {
@@ -18,7 +18,7 @@ router.post('/register', async (req, res) => {
     const user = new User({ name, email, password });
     await user.save();
 
-    const token = jwt.sign(
+    const token = Jsonwebtoken.sign(
       { userId: user._id }, 
       process.env.JWT_SECRET, 
       { expiresIn: '7d' }
@@ -47,11 +47,11 @@ router.post('/login', async (req, res) => {
     const { email, password } = req.body;
 
     const user = await User.findOne({ email });
-    if (!user || !await bcrypt.compare(password, user.password)) {
+    if (!user || !await Bcryptjs.compare(password, user.password)) {
       return res.status(401).json({ success: false, error: 'Invalid credentials' });
     }
 
-    const token = jwt.sign(
+    const token = Jsonwebtoken.sign(
       { userId: user._id },
       process.env.JWT_SECRET,
       { expiresIn: '7d' }
@@ -79,32 +79,4 @@ router.post('/login', async (req, res) => {
   }
 });
 
-module.exports = router;
-
-// middleware/auth.js - JWT Authentication middleware
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-
-const auth = async (req, res, next) => {
-  try {
-    const token = req.header('Authorization')?.replace('Bearer ', '');
-    
-    if (!token) {
-      return res.status(401).json({ success: false, error: 'No token provided' });
-    }
-
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.userId);
-    
-    if (!user) {
-      return res.status(401).json({ success: false, error: 'Invalid token' });
-    }
-
-    req.user = user;
-    next();
-  } catch (error) {
-    res.status(401).json({ success: false, error: 'Token verification failed' });
-  }
-};
-
-module.exports = auth;
+export default router;

@@ -5,24 +5,29 @@
 // =============================================================================
 
 
-const { Pinecone } = require('@pinecone-database/pinecone');
-const faiss = require('faiss-node');
+import Pinecone from '@pinecone-database/pinecone';
+import Faiss from 'faiss-node';
 
 class VectorStore {
   constructor() {
     this.pinecone = process.env.PINECONE_API_KEY 
-      ? new Pinecone({ apiKey: process.env.PINECONE_API_KEY })
+      ? new Pinecone.Pinecone({ 
+          apiKey: process.env.PINECONE_API_KEY 
+        })
       : null;
     
-    this.faissIndex = null; // Local FAISS index as fallback
+    this.faissIndex = null;
     this.initializeFAISS();
+    if (this.pinecone) {
+      this.initializePinecone();
+    }
   }
 
   async initializePinecone() {
-    if (!this.pinecone) return;
+    if (!this.pinecone || !process.env.PINECONE_INDEX_NAME) return;
     
     try {
-      this.index = this.pinecone.Index(process.env.PINECONE_INDEX_NAME);
+      this.index = this.pinecone.index(process.env.PINECONE_INDEX_NAME);
       console.log('✅ Pinecone connected');
     } catch (error) {
       console.error('❌ Pinecone initialization error:', error);
@@ -33,7 +38,7 @@ class VectorStore {
     try {
       // Initialize FAISS index for local vector storage
       const dimension = 1536; // OpenAI embedding dimension
-      this.faissIndex = new faiss.IndexFlatL2(dimension);
+      this.faissIndex = new Faiss.IndexFlatL2(dimension);
       this.faissVectors = [];
       this.faissMetadata = [];
       console.log('✅ FAISS index initialized');
@@ -124,4 +129,4 @@ class VectorStore {
   }
 }
 
-module.exports = new VectorStore();
+export default new VectorStore();

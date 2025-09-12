@@ -1,5 +1,7 @@
 // middleware/errorHandler.js - Centralized error handling middleware
-const logger = require('../utils/logger');
+import loggerModule from '../utils/logger.js';
+
+const { logger } = loggerModule;
 
 /**
  * Custom Application Error class
@@ -270,30 +272,41 @@ const handleDatabaseError = (err, req, res, next) => {
 const logErrors = (err, req, res, next) => {
   // Don't log 404s as errors
   if (err.statusCode === 404) {
-    logger.warn('Route not found', {
-      url: req.originalUrl,
-      method: req.method,
-      ip: req.ip,
-      userAgent: req.get('User-Agent')
-    });
+    // Use console.log as fallback if logger fails
+    try {
+      logger.warn('Route not found', {
+        url: req.originalUrl,
+        method: req.method,
+        ip: req.ip,
+        userAgent: req.get('User-Agent')
+      });
+    } catch (logError) {
+      console.warn('Route not found:', req.originalUrl);
+    }
     return next(err);
   }
   
   // Log based on severity
   const logLevel = err.statusCode >= 500 ? 'error' : 'warn';
+  const safeLogLevel = ['error', 'warn', 'info', 'debug'].includes(logLevel) ? logLevel : 'error';
   
-  logger[logLevel]('Request error', {
-    error: err.message,
-    statusCode: err.statusCode,
-    stack: err.stack,
-    url: req.originalUrl,
-    method: req.method,
-    ip: req.ip,
-    userAgent: req.get('User-Agent'),
-    userId: req.user?._id,
-    body: req.method !== 'GET' ? req.body : undefined,
-    query: req.query
-  });
+  // Safe logging with fallback
+  try {
+    logger[safeLogLevel]('Request error', {
+      error: err.message,
+      statusCode: err.statusCode,
+      stack: err.stack,
+      url: req.originalUrl,
+      method: req.method,
+      ip: req.ip,
+      userAgent: req.get('User-Agent'),
+      userId: req.user?._id,
+      body: req.method !== 'GET' ? req.body : undefined,
+      query: req.query
+    });
+  } catch (logError) {
+    console.error('Request error:', err.message, 'at', req.originalUrl);
+  }
   
   next(err);
 };
@@ -397,7 +410,7 @@ const setupProcessErrorHandlers = () => {
   });
 };
 
-module.exports = {
+export default {
   AppError,
   asyncWrapper,
   globalErrorHandler,

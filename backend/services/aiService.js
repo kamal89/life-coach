@@ -5,28 +5,35 @@
 // =============================================================================
 
 
-const OpenAI = require('openai');
-const { HfInference } = require('@huggingface/inference');
+import OpenAI from 'openai';
 
 class AIService {
   constructor() {
-    this.openai = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-    });
-    
-    this.hf = process.env.HUGGINGFACE_API_KEY 
-      ? new HfInference(process.env.HUGGINGFACE_API_KEY)
-      : null;
+    this.openai = null; // Don't create it yet
+  }
+
+  // Create OpenAI instance when first needed
+  getOpenAI() {
+    if (!this.openai) {
+      if (!process.env.OPENAI_API_KEY) {
+        throw new Error('OPENAI_API_KEY environment variable is required');
+      }
+      this.openai = new OpenAI({ 
+        apiKey: process.env.OPENAI_API_KEY 
+      });
+    }
+    return this.openai;
   }
 
   async generateCoachingResponse(userMessage, context) {
+    const openai = this.getOpenAI();
     const { user, goals, recentMessages, progressData } = context;
     
     const systemPrompt = this.buildSystemPrompt(user, goals, progressData);
     const conversationHistory = this.formatConversationHistory(recentMessages);
 
     try {
-      const completion = await this.openai.chat.completions.create({
+      const completion = await openai.chat.completions.create({
         model: "gpt-4",
         messages: [
           { role: "system", content: systemPrompt },
@@ -161,16 +168,42 @@ Respond in a conversational, supportive tone. Keep responses under 300 words unl
 
   async generateEmbedding(text) {
     try {
-      const response = await this.openai.embeddings.create({
+      const openai = this.getOpenAI();
+      const response = await openai.embeddings.create({
         model: "text-embedding-ada-002",
         input: text,
       });
-      return response.data[0].embedding;
+      
+      // Debug - log the response structure
+      console.log('Embedding response:', JSON.stringify(response, null, 2));
+      
+      // Try different possible structures
+      if (response.data && response.data[0] && response.data[0].embedding) {
+        return response.data[0].embedding;
+      } else if (response.embedding) {
+        return response.embedding;
+      } else if (response[0] && response[0].embedding) {
+        return response[0].embedding;
+      }
+      
+      console.error('Unexpected embedding response structure:', response);
+      return null;
     } catch (error) {
       console.error('Embedding generation error:', error);
       return null;
     }
   }
+
+  formatConversationHistory(messages) {
+    if (!messages || !Array.isArray(messages)) {
+      return [];
+    }
+    
+    return messages.map(msg => ({
+      role: msg.role, // 'user' or 'assistant'
+      content: msg.content
+    }));
+  }
 }
 
-module.exports = new AIService();
+export default new AIService();

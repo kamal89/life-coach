@@ -1,13 +1,13 @@
 // routes/goals.js
-const express = require('express');
-const router = express.Router();
-const Goal = require('../models/Goal');
-const User = require('../models/User');
-const goalAnalysis = require('../services/goalAnalysis');
-const auth = require('../middleware/auth');
+import { Router } from 'express';
+const router = Router();
+import Goal from '../../models/Goals.js';
+import User from '../../models/User.js';
+import GoalAnalysis from '../goalAnalysis.js';
+import Auth from '../../../middleware/auth.js';
 
 // GET /api/goals - Get all user goals
-router.get('/', auth, async (req, res) => {
+router.get('/', Auth.auth, async (req, res) => {
   try {
     const { status, category, type } = req.query;
     const userId = req.user.id;
@@ -32,7 +32,7 @@ router.get('/', auth, async (req, res) => {
 });
 
 // POST /api/goals - Create new goal
-router.post('/', auth, async (req, res) => {
+router.post('/', Auth.auth, async (req, res) => {
   try {
     const { title, description, category, type, targetDate, milestones = [] } = req.body;
     const userId = req.user.id;
@@ -77,7 +77,7 @@ router.post('/', auth, async (req, res) => {
 });
 
 // PUT /api/goals/:id/progress - Update goal progress
-router.put('/:id/progress', auth, async (req, res) => {
+router.put('/:id/progress', Auth.auth, async (req, res) => {
   try {
     const { progress, note } = req.body;
     const goalId = req.params.id;
@@ -111,7 +111,7 @@ router.put('/:id/progress', auth, async (req, res) => {
 });
 
 // POST /api/goals/:id/checkin - Add goal check-in
-router.post('/:id/checkin', auth, async (req, res) => {
+router.post('/:id/checkin', Auth.auth, async (req, res) => {
   try {
     const { mood, confidence, obstacles = [], wins = [], note } = req.body;
     const goalId = req.params.id;
@@ -146,13 +146,13 @@ router.post('/:id/checkin', auth, async (req, res) => {
 });
 
 // GET /api/goals/analytics - Get goal analytics
-router.get('/analytics', auth, async (req, res) => {
+router.get('/analytics', Auth.auth, async (req, res) => {
   try {
     const userId = req.user.id;
     const goals = await Goal.find({ userId });
 
-    const analysis = goalAnalysis.analyzeGoalProgress(goals);
-    const weeklyReport = goalAnalysis.generateWeeklyReport(userId, goals);
+    const analysis = GoalAnalysis.analyzeGoalProgress(goals);
+    const weeklyReport = GoalAnalysis.generateWeeklyReport(userId, goals);
 
     res.json({
       success: true,
@@ -166,4 +166,4 @@ router.get('/analytics', auth, async (req, res) => {
   }
 });
 
-module.exports = router;
+export default router;

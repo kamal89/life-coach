@@ -1,14 +1,14 @@
-/ routes/chat.js
-const express = require('express');
-const router = express.Router();
-const Message = require('../models/Message');
-const Goal = require('../models/Goal');
-const aiService = require('../services/aiService');
-const vectorStore = require('../services/vectorStore');
-const auth = require('../middleware/auth');
+// routes/chat.js
+import { Router } from 'express';
+const router = Router();
+import Message from '../../models/Message.js';
+import Goal from '../../models/Goals.js';
+import AiService from '../aiService.js';
+import VectorStore from '../vectorStore.js';
+import Auth from '../../../middleware/auth.js';
 
 // POST /api/chat/message - Send message to AI coach
-router.post('/message', auth, async (req, res) => {
+router.post('/message', Auth.auth, async (req, res) => {
   try {
     const { message, conversationId } = req.body;
     const userId = req.user.id;
@@ -22,7 +22,7 @@ router.post('/message', auth, async (req, res) => {
     });
 
     // Generate embedding for context search
-    const embedding = await aiService.generateEmbedding(message);
+    const embedding = await AiService.generateEmbedding(message);
     if (embedding) {
       userMessage.embedding = embedding;
     }
@@ -37,7 +37,7 @@ router.post('/message', auth, async (req, res) => {
 
     // Get conversation context from vector store
     const conversationContext = embedding 
-      ? await vectorStore.getConversationContext(userId, message, embedding)
+      ? await VectorStore.getConversationContext(userId, message, embedding)
       : [];
 
     // Prepare context for AI
@@ -50,7 +50,7 @@ router.post('/message', auth, async (req, res) => {
     };
 
     // Generate AI response
-    const aiResponse = await aiService.generateCoachingResponse(message, context);
+    const aiResponse = await AiService.generateCoachingResponse(message, context);
 
     // Store AI message
     const aiMessage = new Message({
@@ -62,13 +62,13 @@ router.post('/message', auth, async (req, res) => {
     });
 
     // Generate and store AI response embedding
-    if (aiService.generateEmbedding) {
-      const aiEmbedding = await aiService.generateEmbedding(aiResponse.content);
+    if (AiService.generateEmbedding) {
+      const aiEmbedding = await AiService.generateEmbedding(aiResponse.content);
       if (aiEmbedding) {
         aiMessage.embedding = aiEmbedding;
         
         // Store in vector database for future context
-        await vectorStore.storeConversation(
+        await VectorStore.storeConversation(
           userId,
           aiMessage._id,
           aiResponse.content,
@@ -98,7 +98,7 @@ router.post('/message', auth, async (req, res) => {
 });
 
 // GET /api/chat/history - Get conversation history
-router.get('/history', auth, async (req, res) => {
+router.get('/history', Auth.auth, async (req, res) => {
   try {
     const { conversationId, limit = 50 } = req.query;
     const userId = req.user.id;
@@ -126,7 +126,7 @@ router.get('/history', auth, async (req, res) => {
 });
 
 // POST /api/chat/feedback - Provide feedback on AI response
-router.post('/feedback', auth, async (req, res) => {
+router.post('/feedback', Auth.auth, async (req, res) => {
   try {
     const { messageId, rating, feedback } = req.body;
     const userId = req.user.id;
@@ -174,4 +174,4 @@ async function getProgressData(userId) {
   return progressData.sort((a, b) => new Date(b.date) - new Date(a.date)).slice(0, 50);
 }
 
-module.exports = router;
+export default router;

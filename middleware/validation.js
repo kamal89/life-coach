@@ -1,7 +1,10 @@
 // middleware/validation.js - Input validation middleware
-const { body, param, query, validationResult } = require('express-validator');
-const mongoose = require('mongoose');
-const logger = require('../utils/logger');
+import { body, param, query, validationResult } from 'express-validator';
+import { Types } from 'mongoose';
+import loggerModule from '../utils/logger.js';
+
+const { logger } = loggerModule;
+
 
 /**
  * Handle validation errors
@@ -36,7 +39,7 @@ const handleValidationErrors = (req, res, next) => {
  * Custom validator for MongoDB ObjectId
  */
 const isValidObjectId = (value) => {
-  return mongoose.Types.ObjectId.isValid(value);
+  return Types.ObjectId.isValid(value);
 };
 
 /**
@@ -466,7 +469,7 @@ const validateFileUpload = (req, res, next) => {
   next();
 };
 
-module.exports = {
+export default {
   // Authentication
   validateRegister,
   validateLogin,

@@ -240,4 +240,4 @@ class GoalAnalysisService {
   }
 }
 
-module.exports = new GoalAnalysisService();
+export default new GoalAnalysisService();

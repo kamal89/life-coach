@@ -1,7 +1,9 @@
 // middleware/auth.js - JWT Authentication middleware
-const jwt = require('jsonwebtoken');
-const User = require('../models/User');
-const logger = require('../utils/logger');
+import Jsonwebtoken from 'jsonwebtoken';
+import User from '../backend/models/User.js';
+import loggerModule from '../utils/logger.js';
+
+const { logger } = loggerModule;
 
 /**
  * JWT Authentication Middleware
@@ -31,8 +33,8 @@ const auth = async (req, res, next) => {
       });
     }
 
-    // Verify token
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    // Jsonwebtoken.verify token
+    const decoded = Jsonwebtoken.verify(token, process.env.JWT_SECRET);
     
     // Get user from database
     const user = await User.findById(decoded.userId).select('-password');
@@ -116,7 +118,7 @@ const optionalAuth = async (req, res, next) => {
       return next();
     }
 
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const decoded = Jsonwebtoken.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.userId).select('-password');
     
     if (user && user.status !== 'suspended' && user.status !== 'deleted') {
@@ -226,7 +228,7 @@ const requireOwnership = (resourceUserIdField = 'userId') => {
   };
 };
 
-module.exports = {
+export default {
   auth,
   optionalAuth,
   requireAdmin,

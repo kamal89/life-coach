@@ -1,16 +1,16 @@
 // models/Goal.js
-const mongoose = require('mongoose');
+import { Schema, model } from 'mongoose';
 
-const milestoneSchema = new mongoose.Schema({
+const milestoneSchema = new Schema({
   text: { type: String, required: true },
   completed: { type: Boolean, default: false },
   completedAt: Date,
   dueDate: Date
 });
 
-const goalSchema = new mongoose.Schema({
+const goalSchema = new Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
@@ -74,4 +74,4 @@ goalSchema.methods.updateProgress = function(newProgress, note) {
   }
 };
 
-module.exports = mongoose.model('Goal', goalSchema);
+export default model('Goal', goalSchema);

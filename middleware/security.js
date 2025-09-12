@@ -1,11 +1,13 @@
 // middleware/security.js - Security and rate limiting middleware
-const rateLimit = require('express-rate-limit');
-const slowDown = require('express-slow-down');
-const helmet = require('helmet');
-const mongoSanitize = require('express-mongo-sanitize');
-const xss = require('xss');
-const hpp = require('hpp');
-const logger = require('../utils/logger');
+import rateLimit from 'express-rate-limit';
+import slowDown from 'express-slow-down';
+import helmet from 'helmet';
+import mongoSanitize from 'express-mongo-sanitize';
+import xss from 'xss';
+import hpp from 'hpp';
+import loggerModule from '../utils/logger.js';
+
+const { logger } = loggerModule;
 
 /**
  * Basic security middleware using Helmet
@@ -86,30 +88,9 @@ const authRateLimit = rateLimit({
  * Rate limiting for chat/AI endpoints (more restrictive)
  */
 const chatRateLimit = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 10, // limit each IP to 10 chat messages per minute
-  message: {
-    success: false,
-    error: 'Too many chat requests, please slow down.',
-    retryAfter: 60
-  },
-  keyGenerator: (req) => {
-    // Use user ID if authenticated, otherwise IP
-    return req.user ? req.user._id.toString() : req.ip;
-  },
-  handler: (req, res) => {
-    logger.warn('Chat rate limit exceeded', {
-      ip: req.ip,
-      userId: req.user?._id,
-      userAgent: req.get('User-Agent')
-    });
-    
-    res.status(429).json({
-      success: false,
-      error: 'Too many chat requests, please slow down.',
-      retryAfter: 60
-    });
-  }
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 100, // limit each IP to 100 requests per windowMs
+  message: 'Too many requests from this IP, please try again later.'
 });
 
 /**
@@ -117,10 +98,9 @@ const chatRateLimit = rateLimit({
  */
 const progressiveDelay = slowDown({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  delayAfter: 10, // allow 10 requests per window without delay
-  delayMs: 500, // add 500ms of delay per request after delayAfter
-  maxDelayMs: 20000, // maximum delay of 20 seconds
-  skipSuccessfulRequests: true
+  delayAfter: 10, // allow 10 requests per windowMs without delay
+  delayMs: () => 500, // Updated syntax
+  validate: { delayMs: false }
 });
 
 /**
@@ -518,7 +498,7 @@ const cleanupExpiredEntries = () => {
 };
 
 // Export all middleware
-module.exports = {
+export default {
   // Basic security
   basicSecurity,
   securityHeaders,

@@ -1,9 +1,9 @@
 // models/Message.js
-const mongoose = require('mongoose');
+import { Schema, model } from 'mongoose';
 
-const messageSchema = new mongoose.Schema({
+const messageSchema = new Schema({
   userId: {
-    type: mongoose.Schema.Types.ObjectId,
+    type: Schema.Types.ObjectId,
     ref: 'User',
     required: true
   },
@@ -16,7 +16,7 @@ const messageSchema = new mongoose.Schema({
   content: { type: String, required: true },
   metadata: {
     goalContext: [{
-      goalId: mongoose.Schema.Types.ObjectId,
+      goalId: Schema.Types.ObjectId,
       relevanceScore: Number
     }],
     sentiment: Number, // -1 to 1
@@ -28,4 +28,4 @@ const messageSchema = new mongoose.Schema({
   timestamps: true
 });
 
-module.exports = mongoose.model('Message', messageSchema);
+export default model('Message', messageSchema);

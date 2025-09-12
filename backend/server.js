@@ -1,46 +1,50 @@
 // server.js - AI Life Coach Express Server
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-const helmet = require('helmet');
-const compression = require('compression');
-const path = require('path');
-const dotenv = require('dotenv');
+import express from 'express';
+import Mongoose from 'mongoose';
+import cors from 'cors';
+import compression from 'compression';
+import Path from 'path';
+import Dotenv from 'dotenv';
+import { fileURLToPath } from 'url';
+import { dirname } from 'path';
+import swaggerUi from 'swagger-ui-express';
+import swaggerJsdoc from 'swagger-jsdoc';
+import Redis from 'ioredis';
+
+// Recreate __dirname for ES modules
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 // Load environment variables
-dotenv.config();
+Dotenv.config();
 
 // Import middleware
-const { httpLogger, logger } = require('./utils/logger');
-const { 
-  globalErrorHandler, 
-  handleNotFound, 
-  logErrors,
-  handleDatabaseError,
-  setupProcessErrorHandlers 
-} = require('./middleware/errorHandler');
-const { 
+import Logger from '../utils/logger.js';
+import ErrorHandler from '../middleware/errorHandler.js';
+import securityMiddleware from '../middleware/security.js';
+
+const {
   basicSecurity, 
   generalRateLimit, 
-  authRateLimit,
-  chatRateLimit,
-  xssProtection,
-  securityHeaders,
-  corsOptions,
-  requestLogger,
-  suspiciousActivityDetector,
-  validateContentType 
-} = require('./middleware/security');
+  authRateLimit, 
+  chatRateLimit, 
+  xssProtection, 
+  securityHeaders, 
+  corsOptions, 
+  requestLogger, 
+  suspiciousActivityDetector, 
+  validateContentType
+} = securityMiddleware;
 
 // Import routes
-const authRoutes = require('./routes/auth');
-const userRoutes = require('./routes/users');
-const goalRoutes = require('./routes/goals');
-const chatRoutes = require('./routes/chat');
-const analyticsRoutes = require('./routes/analytics');
+import authRoutes from './services/routes/auth.js';
+import userRoutes from './services/routes/users.js';
+import goalRoutes from './services/routes/goals.js';
+import chatRoutes from './services/routes/chat.js';
+import analyticsRoutes from './services/routes/analytics.js';
 
 // Import services
-const vectorStore = require('./services/vectorStore');
+import VectorStore from './services/vectorStore.js';
 
 // Create Express app
 const app = express();
@@ -57,7 +61,7 @@ app.use(basicSecurity);
 app.use(securityHeaders);
 
 // Request logging
-app.use(httpLogger);
+app.use(Logger.httpLogger);
 app.use(requestLogger);
 
 // Suspicious activity detection
@@ -120,14 +124,14 @@ app.use(...xssProtection);
 // =============================================================================
 
 // Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads'), {
+app.use('/uploads', express.static(Path.join(__dirname, 'uploads'), {
   maxAge: '1d',
   etag: true
 }));
 
 // Serve frontend in production
 if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(path.join(__dirname, 'frontend/build')));
+  app.use(express.static(Path.join(__dirname, 'frontend/build')));
 }
 
 // =============================================================================
@@ -136,7 +140,7 @@ if (process.env.NODE_ENV === 'production') {
 
 // Basic health check
 app.get('/health', (req, res) => {
-  res.status(200).json({
+  res.status(200).express.json({
     status: 'healthy',
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
@@ -158,7 +162,7 @@ app.get('/health/detailed', async (req, res) => {
 
   try {
     // Check database connection
-    const dbState = mongoose.connection.readyState;
+    const dbState = Mongoose.connection.readyState;
     health.services.database = {
       status: dbState === 1 ? 'connected' : 'disconnected',
       state: ['disconnected', 'connected', 'connecting', 'disconnecting'][dbState]
@@ -182,7 +186,7 @@ app.get('/health/detailed', async (req, res) => {
     // Check AI service
     if (process.env.OPENAI_API_KEY) {
       health.services.ai = {
-        status: 'configured',
+        status: 'Dotenv.configured',
         provider: 'openai'
       };
     }
@@ -198,11 +202,11 @@ app.get('/health/detailed', async (req, res) => {
       res.status(503);
     }
 
-    res.json(health);
+    res.express.json(health);
 
   } catch (error) {
-    logger.error('Health check error', { error: error.message });
-    res.status(503).json({
+    Logger.logger.error('Health check error', { error: error.message });
+    res.status(503).express.json({
       status: 'unhealthy',
       error: 'Health check failed',
       timestamp: new Date().toISOString()
@@ -237,9 +241,6 @@ app.use('/api/analytics', analyticsRoutes);
 // =============================================================================
 
 if (process.env.SWAGGER_ENABLED === 'true') {
-  const swaggerUi = require('swagger-ui-express');
-  const swaggerJsdoc = require('swagger-jsdoc');
-
   const swaggerOptions = {
     definition: {
       openapi: '3.0.0',
@@ -264,7 +265,7 @@ if (process.env.SWAGGER_ENABLED === 'true') {
         }
       }
     },
-    apis: ['./routes/*.js', './models/*.js']
+    apis: ['./services/routes/*.js', './models/*.js']
   };
 
   const swaggerSpec = swaggerJsdoc(swaggerOptions);
@@ -275,13 +276,13 @@ if (process.env.SWAGGER_ENABLED === 'true') {
     customSiteTitle: 'AI Life Coach API Documentation'
   }));
 
-  // Serve OpenAPI spec as JSON
-  app.get('/api-docs.json', (req, res) => {
-    res.setHeader('Content-Type', 'application/json');
+  // Serve OpenAPI spec as express.json
+  app.get('/api-docs.express.json', (req, res) => {
+    res.setHeader('Content-Type', 'application/express.json');
     res.send(swaggerSpec);
   });
 
-  logger.info('Swagger documentation available at /api-docs');
+  Logger.logger.info('Swagger documentation available at /api-docs');
 }
 
 // =============================================================================
@@ -291,7 +292,7 @@ if (process.env.SWAGGER_ENABLED === 'true') {
 if (process.env.NODE_ENV === 'production') {
   // Handle React routing, return all requests to React app
   app.get('*', (req, res) => {
-    res.sendFile(path.join(__dirname, 'frontend/build', 'index.html'));
+    res.sendFile(Path.join(__dirname, 'frontend/build', 'index.html'));
   });
 }
 
@@ -300,16 +301,16 @@ if (process.env.NODE_ENV === 'production') {
 // =============================================================================
 
 // Log errors
-app.use(logErrors);
+app.use(ErrorHandler.logErrors);
 
 // Handle database errors
-app.use(handleDatabaseError);
+app.use(ErrorHandler.handleDatabaseError);
 
 // Handle 404 errors
-app.all('*', handleNotFound);
+app.all('*', ErrorHandler.handleNotFound);
 
 // Global error handler
-app.use(globalErrorHandler);
+app.use(ErrorHandler.globalErrorHandler);
 
 // =============================================================================
 // DATABASE CONNECTION
@@ -317,44 +318,10 @@ app.use(globalErrorHandler);
 
 const connectDatabase = async () => {
   try {
-    const mongoOptions = {
-      useNewUrlParser: true,
-      useUnifiedTopology: true,
-      maxPoolSize: parseInt(process.env.DB_MAX_POOL_SIZE) || 10,
-      minPoolSize: parseInt(process.env.DB_MIN_POOL_SIZE) || 5,
-      maxIdleTimeMS: 30000,
-      serverSelectionTimeoutMS: parseInt(process.env.DB_CONNECTION_TIMEOUT) || 30000,
-      socketTimeoutMS: 45000,
-      bufferCommands: false,
-      bufferMaxEntries: 0
-    };
-
-    await mongoose.connect(process.env.MONGODB_URI, mongoOptions);
-    
-    logger.info('Database connected successfully', {
-      host: mongoose.connection.host,
-      name: mongoose.connection.name,
-      readyState: mongoose.connection.readyState
-    });
-
-    // Database event listeners
-    mongoose.connection.on('error', (err) => {
-      logger.error('Database connection error', { error: err.message });
-    });
-
-    mongoose.connection.on('disconnected', () => {
-      logger.warn('Database disconnected');
-    });
-
-    mongoose.connection.on('reconnected', () => {
-      logger.info('Database reconnected');
-    });
-
+    await Mongoose.connect(process.env.MONGODB_URI);
+    console.log('Database connected successfully');
   } catch (error) {
-    logger.error('Database connection failed', { 
-      error: error.message,
-      stack: error.stack 
-    });
+    console.error('Database connection failed:', error);
     process.exit(1);
   }
 };
@@ -365,13 +332,11 @@ const connectDatabase = async () => {
 
 const connectRedis = async () => {
   if (!process.env.REDIS_URL) {
-    logger.info('Redis URL not provided, skipping Redis connection');
+    Logger.logger.info('Redis URL not provided, skipping Redis connection');
     return;
   }
 
   try {
-    const Redis = require('ioredis');
-    
     const redisOptions = {
       retryDelayOnFailover: 100,
       enableReadyCheck: true,
@@ -382,21 +347,21 @@ const connectRedis = async () => {
     global.redisClient = new Redis(process.env.REDIS_URL, redisOptions);
 
     global.redisClient.on('connect', () => {
-      logger.info('Redis connected successfully');
+      Logger.logger.info('Redis connected successfully');
     });
 
     global.redisClient.on('error', (err) => {
-      logger.error('Redis connection error', { error: err.message });
+      Logger.logger.error('Redis connection error', { error: err.message });
     });
 
     global.redisClient.on('close', () => {
-      logger.warn('Redis connection closed');
+      Logger.logger.warn('Redis connection closed');
     });
 
     await global.redisClient.connect();
 
   } catch (error) {
-    logger.error('Redis connection failed', { 
+    Logger.logger.error('Redis connection failed', { 
       error: error.message 
     });
     // Don't exit on Redis failure, it's optional
@@ -411,15 +376,15 @@ const initializeServices = async () => {
   try {
     // Initialize vector store
     if (process.env.PINECONE_API_KEY) {
-      await vectorStore.initializePinecone();
-      logger.info('Vector store (Pinecone) initialized');
+      await VectorStore.initializePinecone();
+      Logger.logger.info('Vector store (Pinecone) initialized');
     } else {
-      await vectorStore.initializeFAISS();
-      logger.info('Vector store (FAISS) initialized');
+      await VectorStore.initializeFAISS();
+      Logger.logger.info('Vector store (FAISS) initialized');
     }
 
   } catch (error) {
-    logger.error('Service initialization failed', { 
+    Logger.logger.error('Service initialization failed', { 
       error: error.message 
     });
   }
@@ -430,37 +395,37 @@ const initializeServices = async () => {
 // =============================================================================
 
 const gracefulShutdown = (signal) => {
-  logger.info(`Received ${signal}. Starting graceful shutdown...`);
+  Logger.logger.info(`Received ${signal}. Starting graceful shutdown...`);
   
   server.close(async (err) => {
     if (err) {
-      logger.error('Error during server shutdown', { error: err.message });
+      Logger.logger.error('Error during server shutdown', { error: err.message });
       process.exit(1);
     }
 
     try {
       // Close database connection
-      await mongoose.connection.close();
-      logger.info('Database connection closed');
+      await Mongoose.connection.close();
+      Logger.logger.info('Database connection closed');
 
       // Close Redis connection
       if (global.redisClient) {
         await global.redisClient.quit();
-        logger.info('Redis connection closed');
+        Logger.logger.info('Redis connection closed');
       }
 
-      logger.info('Graceful shutdown completed');
+      Logger.logger.info('Graceful shutdown completed');
       process.exit(0);
 
     } catch (error) {
-      logger.error('Error during graceful shutdown', { error: error.message });
+      Logger.logger.error('Error during graceful shutdown', { error: error.message });
       process.exit(1);
     }
   });
 
   // Force close after 10 seconds
   setTimeout(() => {
-    logger.error('Forced shutdown after timeout');
+    Logger.logger.error('Forced shutdown after timeout');
     process.exit(1);
   }, 10000);
 };
@@ -477,7 +442,7 @@ let server;
 const startServer = async () => {
   try {
     // Setup process error handlers
-    setupProcessErrorHandlers();
+    ErrorHandler.setupProcessErrorHandlers();
 
     // Connect to database
     await connectDatabase();
@@ -490,7 +455,7 @@ const startServer = async () => {
 
     // Start HTTP server
     server = app.listen(PORT, HOST, () => {
-      logger.info('Server started successfully', {
+      Logger.logger.info('Server started successfully', {
         port: PORT,
         host: HOST,
         environment: process.env.NODE_ENV,
@@ -499,7 +464,7 @@ const startServer = async () => {
       });
 
       // Log important URLs
-      logger.info('Server URLs', {
+      Logger.logger.info('Server URLs', {
         api: `http://${HOST}:${PORT}/api`,
         health: `http://${HOST}:${PORT}/health`,
         docs: process.env.SWAGGER_ENABLED === 'true' ? `http://${HOST}:${PORT}/api-docs` : 'disabled'
@@ -514,13 +479,11 @@ const startServer = async () => {
 
       switch (error.code) {
         case 'EACCES':
-          logger.error(`Port ${PORT} requires elevated privileges`);
+          Logger.logger.error(`Port ${PORT} requires elevated privileges`);
           process.exit(1);
-          break;
         case 'EADDRINUSE':
-          logger.error(`Port ${PORT} is already in use`);
+          Logger.logger.error(`Port ${PORT} is already in use`);
           process.exit(1);
-          break;
         default:
           throw error;
       }
@@ -532,7 +495,7 @@ const startServer = async () => {
 
     // Handle uncaught exceptions and unhandled rejections
     process.on('uncaughtException', (err) => {
-      logger.error('Uncaught Exception! Shutting down...', {
+      Logger.logger.error('Uncaught Exception! Shutting down...', {
         error: err.message,
         stack: err.stack
       });
@@ -540,7 +503,7 @@ const startServer = async () => {
     });
 
     process.on('unhandledRejection', (err) => {
-      logger.error('Unhandled Rejection! Shutting down...', {
+      Logger.logger.error('Unhandled Rejection! Shutting down...', {
         error: err.message,
         stack: err.stack
       });
@@ -548,7 +511,7 @@ const startServer = async () => {
     });
 
   } catch (error) {
-    logger.error('Failed to start server', {
+    Logger.logger.error('Failed to start server', {
       error: error.message,
       stack: error.stack
     });
@@ -560,4 +523,4 @@ const startServer = async () => {
 startServer();
 
 // Export app for testing
-module.exports = app;
+export default app;

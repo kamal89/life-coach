@@ -67,7 +67,7 @@
 - **MongoDB** (local or Atlas)
 - **OpenAI API Key**
 
-#### Installing MongoDB
+#### Installing MongoDB on MacOS
 # 1. Install MongoDB using Homebrew
 brew tap mongodb/brew
 brew install mongodb-community
@@ -84,8 +84,8 @@ brew services stop mongodb-community
 ### 1. Clone the Repository
 
 ```bash
-git clone https://github.com/kamal89/ai-life-coach.git
-cd ai-life-coach
+git clone https://github.com/kamal89/life-coach.git
+cd life-coach
 ```
 
 ### 2. Environment Setup
@@ -164,7 +164,7 @@ npm run format          # Prettier
 ### Project Structure
 
 ```
-ai-life-coach/
+life-coach/
 ├── 📁 frontend/           # React application
 │   ├── src/
 │   │   ├── components/    # React components
@@ -605,7 +605,7 @@ src/
 ```bash
 # Clone the repository
 git clone <repository-url>
-cd ai-life-coach/frontend
+cd life-coach/frontend
 
 # Install dependencies
 npm install
@@ -941,9 +941,9 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ## 📞 Support
 
-- **Documentation**: [Wiki](https://github.com/kamal89/ai-life-coach/wiki)
-- **Issues**: [GitHub Issues](https://github.com/kamal89/ai-life-coach/issues)
-- **Discussions**: [GitHub Discussions](https://github.com/kamal89/ai-life-coach/discussions)
+- **Documentation**: [Wiki](https://github.com/kamal89/life-coach/wiki)
+- **Issues**: [GitHub Issues](https://github.com/kamal89/life-coach/issues)
+- **Discussions**: [GitHub Discussions](https://github.com/kamal89/life-coach/discussions)
 - **Email**: kamal.chaker@gmail.com
 
 ---
