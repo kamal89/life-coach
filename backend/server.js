@@ -49,6 +49,18 @@ import VectorStore from './services/vectorStore.js';
 // Create Express app
 const app = express();
 
+app.use((req, res, next) => {
+  console.log(`📥 ${req.method} ${req.url} - Origin: ${req.headers.origin}`);
+  
+  // Handle preflight requests immediately
+  if (req.method === 'OPTIONS') {
+    console.log('✈️  Handling preflight request');
+    return cors(corsOptions)(req, res, next);
+  }
+  
+  next();
+});
+
 // Trust proxy for accurate IP addresses behind load balancer
 app.set('trust proxy', 1);
 

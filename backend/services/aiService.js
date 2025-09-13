@@ -4,7 +4,6 @@
 // AI SERVICE INTEGRATION
 // =============================================================================
 
-
 import OpenAI from 'openai';
 
 class AIService {
@@ -27,31 +26,144 @@ class AIService {
 
   async generateCoachingResponse(userMessage, context) {
     const openai = this.getOpenAI();
-    const { user, goals, recentMessages, progressData } = context;
+    
+    // Validate and provide defaults for context
+    const safeContext = this.validateContext(context);
+    const { user, goals, recentMessages, progressData } = safeContext;
+    
+    console.log('🤖 Generating coaching response for user:', user?.name || 'Unknown');
     
     const systemPrompt = this.buildSystemPrompt(user, goals, progressData);
     const conversationHistory = this.formatConversationHistory(recentMessages);
 
+    // Build messages array with validation
+    const messages = this.buildMessagesArray(systemPrompt, conversationHistory, userMessage);
+    
+    console.log(`📝 Sending ${messages.length} messages to OpenAI`);
+
     try {
       const completion = await openai.chat.completions.create({
         model: "gpt-4",
-        messages: [
-          { role: "system", content: systemPrompt },
-          ...conversationHistory,
-          { role: "user", content: userMessage }
-        ],
+        messages: messages,
         temperature: 0.7,
         max_tokens: 800,
       });
+
+      console.log('✅ OpenAI response received successfully');
 
       return {
         content: completion.choices[0].message.content,
         metadata: await this.analyzeResponse(userMessage, completion.choices[0].message.content)
       };
     } catch (error) {
-      console.error('OpenAI API Error:', error);
-      return this.getFallbackResponse(userMessage, context);
+      console.error('❌ OpenAI API Error:', error);
+      
+      // Log specific error details for debugging
+      if (error.status) {
+        console.error('Error Status:', error.status);
+      }
+      if (error.message) {
+        console.error('Error Message:', error.message);
+      }
+      
+      return this.getFallbackResponse(userMessage, safeContext);
     }
+  }
+
+  // New method to validate context and provide safe defaults
+  validateContext(context) {
+    if (!context || typeof context !== 'object') {
+      console.log('⚠️  No context provided, using defaults');
+      return this.getDefaultContext();
+    }
+
+    return {
+      user: context.user || this.getDefaultUser(),
+      goals: Array.isArray(context.goals) ? context.goals : [],
+      recentMessages: Array.isArray(context.recentMessages) ? context.recentMessages : [],
+      progressData: Array.isArray(context.progressData) ? context.progressData : []
+    };
+  }
+
+  // New method to build messages array with validation
+  buildMessagesArray(systemPrompt, conversationHistory, userMessage) {
+    const messages = [];
+
+    // Add system message
+    if (systemPrompt && typeof systemPrompt === 'string') {
+      messages.push({ 
+        role: "system", 
+        content: systemPrompt 
+      });
+    } else {
+      console.log('⚠️  Invalid system prompt, using default');
+      messages.push({ 
+        role: "system", 
+        content: "You are a helpful life coach. Provide supportive and actionable advice." 
+      });
+    }
+
+    // Add conversation history
+    if (Array.isArray(conversationHistory)) {
+      conversationHistory.forEach((msg, index) => {
+        if (this.isValidMessage(msg)) {
+          messages.push(msg);
+        } else {
+          console.log(`⚠️  Invalid message at index ${index}:`, msg);
+        }
+      });
+    }
+
+    // Add current user message
+    if (userMessage && typeof userMessage === 'string') {
+      messages.push({ 
+        role: "user", 
+        content: userMessage.trim()
+      });
+    } else {
+      console.error('❌ Invalid user message:', userMessage);
+      messages.push({ 
+        role: "user", 
+        content: "Hello" 
+      });
+    }
+
+    return messages;
+  }
+
+  // New method to validate individual messages
+  isValidMessage(msg) {
+    return (
+      msg && 
+      typeof msg === 'object' && 
+      typeof msg.role === 'string' && 
+      ['system', 'user', 'assistant'].includes(msg.role) &&
+      typeof msg.content === 'string' &&
+      msg.content.trim().length > 0
+    );
+  }
+
+  // Provide default context for new users
+  getDefaultContext() {
+    return {
+      user: this.getDefaultUser(),
+      goals: [],
+      recentMessages: [],
+      progressData: []
+    };
+  }
+
+  getDefaultUser() {
+    return {
+      name: 'User',
+      preferences: {
+        coachingStyle: 'supportive',
+        focusAreas: ['general wellbeing']
+      },
+      metrics: {
+        streakDays: 0
+      }
+    };
   }
 
   buildSystemPrompt(user, goals, progressData) {
@@ -61,38 +173,56 @@ class AIService {
       ? activeGoals.reduce((sum, goal) => sum + goal.progress, 0) / activeGoals.length 
       : 0;
 
-    return `You are an expert AI life coach helping ${user.name}. Your coaching style should be ${user.preferences.coachingStyle}.
+    // Handle case where user might not have full data
+    const userName = user?.name || 'there';
+    const coachingStyle = user?.preferences?.coachingStyle || 'supportive';
+    const focusAreas = user?.preferences?.focusAreas || ['general wellbeing'];
+    const streakDays = user?.metrics?.streakDays || 0;
+
+    let systemPrompt = `You are an expert AI life coach helping ${userName}. Your coaching style should be ${coachingStyle}.
 
 CONTEXT:
 - Active Goals: ${activeGoals.length}
 - Completed Goals: ${completedGoals.length}  
 - Average Progress: ${Math.round(avgProgress)}%
-- Streak: ${user.metrics.streakDays} days
-- Focus Areas: ${user.preferences.focusAreas.join(', ')}
+- Streak: ${streakDays} days
+- Focus Areas: ${focusAreas.join(', ')}`;
+
+    if (activeGoals.length > 0) {
+      systemPrompt += `
 
 CURRENT GOALS:
 ${activeGoals.map(goal => 
   `• ${goal.title} (${goal.category}) - ${goal.progress}% complete, due ${goal.targetDate}`
-).join('\n')}
+).join('\n')}`;
+    } else {
+      systemPrompt += `
+
+This user doesn't have any active goals yet. Help them identify areas where they'd like to grow and suggest starting with small, achievable goals.`;
+    }
+
+    systemPrompt += `
 
 COACHING PRINCIPLES:
 1. Be specific and actionable, not generic
-2. Reference their actual goals and progress
+2. Reference their actual goals and progress when available
 3. Ask targeted questions to uncover obstacles
 4. Celebrate wins and reframe setbacks
 5. Focus on systems and habits over just outcomes
-6. Match their preferred coaching style: ${user.preferences.coachingStyle}
+6. Match their preferred coaching style: ${coachingStyle}
 
 RECENT PATTERNS:
 ${this.analyzeProgressPatterns(progressData)}
 
 Respond in a conversational, supportive tone. Keep responses under 300 words unless providing detailed guidance.`;
+
+    return systemPrompt;
   }
 
   analyzeProgressPatterns(progressData) {
     // Analyze recent progress trends
     if (!progressData || progressData.length === 0) {
-      return "No recent progress data available.";
+      return "This appears to be a new conversation. Focus on understanding their current situation and goals.";
     }
 
     const recentTrend = progressData.slice(-7); // Last 7 days
@@ -153,11 +283,19 @@ Respond in a conversational, supportive tone. Keep responses under 300 words unl
     return (positive - negative) / Math.max(words.length / 10, 1); // Normalize
   }
 
+  findRelevantGoals(message) {
+    // Placeholder - would analyze message against user's goals
+    return [];
+  }
+
   getFallbackResponse(userMessage, context) {
+    console.log('🔄 Using fallback response');
+    
     const responses = [
       "I understand you're working on your goals. Can you tell me more about what specific challenge you're facing right now?",
-      "Based on your current progress, you're making steady advancement. What area would you like to focus on improving?",
+      "I'm here to help you with your personal development. What area would you like to focus on improving?",
       "Let's break this down step by step. What's the most important thing you could do today to move forward?",
+      "I'd love to help you with that. Could you share a bit more about your current situation?",
     ];
     
     return {
@@ -169,13 +307,14 @@ Respond in a conversational, supportive tone. Keep responses under 300 words unl
   async generateEmbedding(text) {
     try {
       const openai = this.getOpenAI();
+      console.log(`🔍 Generating embedding for text length: ${text?.length || 0} chars`);
+      
       const response = await openai.embeddings.create({
         model: "text-embedding-ada-002",
         input: text,
       });
       
-      // Debug - log the response structure
-      console.log('Embedding response:', JSON.stringify(response, null, 2));
+      console.log(`📊 Embedding generated with ${response.data[0].embedding.length} dimensions`);
       
       // Try different possible structures
       if (response.data && response.data[0] && response.data[0].embedding) {
@@ -186,23 +325,29 @@ Respond in a conversational, supportive tone. Keep responses under 300 words unl
         return response[0].embedding;
       }
       
-      console.error('Unexpected embedding response structure:', response);
+      console.error('❌ Unexpected embedding response structure:', Object.keys(response));
       return null;
     } catch (error) {
-      console.error('Embedding generation error:', error);
+      console.error('❌ Embedding generation error:', error);
       return null;
     }
   }
 
   formatConversationHistory(messages) {
     if (!messages || !Array.isArray(messages)) {
+      console.log('ℹ️  No conversation history provided');
       return [];
     }
     
-    return messages.map(msg => ({
-      role: msg.role, // 'user' or 'assistant'
-      content: msg.content
-    }));
+    const formattedMessages = messages
+      .filter(msg => this.isValidMessage(msg))
+      .map(msg => ({
+        role: msg.role, // 'user' or 'assistant'
+        content: msg.content
+      }));
+    
+    console.log(`📝 Formatted ${formattedMessages.length} history messages`);
+    return formattedMessages;
   }
 }
 

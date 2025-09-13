@@ -200,6 +200,7 @@ const parseSize = (size) => {
  */
 const corsOptions = {
   origin: (origin, callback) => {
+    
     const allowedOrigins = process.env.ALLOWED_ORIGINS 
       ? process.env.ALLOWED_ORIGINS.split(',')
       : ['http://localhost:3000', 'http://localhost:3001'];
@@ -210,7 +211,7 @@ const corsOptions = {
     if (allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      logger.warn('CORS blocked request', { origin });
+      console.log('CORS BLOCKED:', origin);
       callback(new Error('Not allowed by CORS'));
     }
   },

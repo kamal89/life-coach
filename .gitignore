@@ -2,3 +2,5 @@
 /node_modules
 logs/app.log
 backend/.env
+/frontend/node_modules
+frontend/.env
