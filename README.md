@@ -120,7 +120,7 @@ are you most interested in focusing on?"
 
 ```
 ┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   React Frontend │◄──►│  Express API    │◄──►│   MongoDB       │
+│  React Frontend │◄──►│  Express API    │◄──►│   MongoDB       │
 │                 │    │                 │    │                 │
 │ • Goal Dashboard│    │ • RESTful API   │    │ • User Data     │
 │ • Chat Interface│    │ • Authentication│    │ • Goals         │
